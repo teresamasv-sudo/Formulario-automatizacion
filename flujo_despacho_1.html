@@ -100,9 +100,7 @@
     background: white;
   }
 
-  textarea::placeholder {
-    color: #C4C4C4;
-  }
+  textarea::placeholder { color: #C4C4C4; }
 
   .divider {
     height: 1px;
@@ -127,8 +125,8 @@
   }
 
   .btn:hover { background: #1e3329; }
-
   .btn:active { background: #162920; }
+  .btn:disabled { background: #9B9B9B; cursor: not-allowed; }
 
   .success {
     display: none;
@@ -174,30 +172,30 @@
   <div class="question-block">
     <div class="question">1. ¿Cómo llega un cliente nuevo al despacho?</div>
     <div class="question-hint">¿Os llaman, os escriben, os recomiendan? ¿Quién lo recibe y qué pasa después?</div>
-    <textarea placeholder="Cuéntame..."></textarea>
+    <textarea id="q1" placeholder="Cuéntame..."></textarea>
   </div>
 
   <div class="question-block">
     <div class="question">2. ¿Cómo gestionáis los expedientes?</div>
     <div class="question-hint">¿Usáis solo My Hours o hay algo más? ¿Cómo sabéis en qué punto está cada caso?</div>
-    <textarea placeholder="Cuéntame..."></textarea>
+    <textarea id="q2" placeholder="Cuéntame..."></textarea>
   </div>
 
   <div class="question-block">
     <div class="question">3. ¿Cómo hacéis la facturación?</div>
     <div class="question-hint">¿Desde My Hours directamente, Excel, otra herramienta? ¿Quién lo hace y cuánto os lleva?</div>
-    <textarea placeholder="Cuéntame..."></textarea>
+    <textarea id="q3" placeholder="Cuéntame..."></textarea>
   </div>
 
   <div class="question-block">
     <div class="question">4. ¿Qué es lo que más os da rabia tener que hacer?</div>
     <div class="question-hint">La tarea que pensáis "esto no debería llevarme tanto tiempo".</div>
-    <textarea placeholder="Cuéntame..."></textarea>
+    <textarea id="q4" placeholder="Cuéntame..."></textarea>
   </div>
 
   <div class="divider"></div>
 
-  <button class="btn" onclick="enviar()">Enviar respuestas</button>
+  <button class="btn" id="btn-enviar" onclick="enviar()">Enviar respuestas</button>
 
   <div class="success" id="success">
     <div class="success-icon">✓</div>
@@ -209,17 +207,7 @@
 <div class="footer">Carmen · Teresa</div>
 
 <script>
-function enviar() {
-  const textareas = document.querySelectorAll('textarea');
-  const respuestas = Array.from(textareas).map(t => t.value.trim());
-  const alguna = respuestas.some(r => r.length > 0);
-
-  if (!alguna) {
-    textareas[0].focus();
-    return;
-  }
-
-  // Construir resumen
+async function enviar() {
   const preguntas = [
     "¿Cómo llega un cliente nuevo?",
     "¿Cómo gestionáis los expedientes?",
@@ -227,19 +215,50 @@ function enviar() {
     "¿Qué es lo que más os da rabia?"
   ];
 
-  let texto = "📋 Respuestas del despacho:\n\n";
+  const ids = ['q1', 'q2', 'q3', 'q4'];
+  const respuestas = ids.map(id => document.getElementById(id).value.trim());
+  const alguna = respuestas.some(r => r.length > 0);
+
+  if (!alguna) {
+    document.getElementById('q1').focus();
+    return;
+  }
+
+  const btn = document.getElementById('btn-enviar');
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+
+  // Construir mensaje para Formspree
+  let mensaje = '';
   preguntas.forEach((p, i) => {
     if (respuestas[i]) {
-      texto += `${p}\n${respuestas[i]}\n\n`;
+      mensaje += p + '\n' + respuestas[i] + '\n\n';
     }
   });
 
-  // Copiar al portapapeles
-  navigator.clipboard.writeText(texto).catch(() => {});
+  try {
+    const response = await fetch('https://formspree.io/f/xeebjlnp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        _subject: 'Respuestas del despacho',
+        mensaje: mensaje
+      })
+    });
 
-  // Mostrar éxito
-  document.querySelector('.btn').style.display = 'none';
-  document.getElementById('success').style.display = 'block';
+    if (response.ok) {
+      btn.style.display = 'none';
+      document.getElementById('success').style.display = 'block';
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Enviar respuestas';
+      alert('Hubo un error. Inténtalo de nuevo.');
+    }
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = 'Enviar respuestas';
+    alert('Hubo un error de conexión. Inténtalo de nuevo.');
+  }
 }
 </script>
 
